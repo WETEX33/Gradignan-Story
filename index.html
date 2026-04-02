@@ -203,7 +203,7 @@
 
     <div class="field">
       <label for="division">Division / Competition</label>
-      <input id="division" value="Regionale 2" oninput="render()" />
+      <input id="division" value="Loisirs" oninput="render()" />
     </div>
 
     <div class="field">
@@ -212,8 +212,8 @@
     </div>
 
     <div class="field">
-      <label for="gvc_team">Equipe GVC (ex: GVC1, GVC2, GVC3)</label>
-      <input id="gvc_team" value="GVC1" oninput="render()" />
+      <label for="gvc_team">Equipe GVC (ex: GVC, GVC1, GVC2)</label>
+      <input id="gvc_team" value="GVC" oninput="render()" />
     </div>
 
     <div class="field">
@@ -243,6 +243,12 @@
       </select>
     </div>
 
+    <div class="field mode-result hidden">
+      <label for="resultPhotoFile">Photo d'equipe (optionnelle)</label>
+      <input id="resultPhotoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="onResultPhotoChange(event)" />
+      <button class="mini-btn" type="button" onclick="clearResultPhoto()">Retirer la photo</button>
+    </div>
+
     <div class="double-row mode-gameday">
       <div class="field">
         <label for="date">Date (ex: 28/09)</label>
@@ -256,7 +262,7 @@
 
     <div class="field mode-gameday">
       <label for="lieu">Lieu</label>
-      <input id="lieu" value="Gymnase Gradignan" oninput="render()" />
+      <input id="lieu" value="Gymnase" oninput="render()" />
     </div>
 
     <div class="field">
@@ -300,6 +306,8 @@ const gvcLogoImage = new Image();
 let gvcLogoReady = false;
 const adversaireLogoImage = new Image();
 let adversaireLogoReady = false;
+const resultPhotoImage = new Image();
+let resultPhotoReady = false;
 
 function initGVCLogo() {
   gvcLogoImage.onload = () => {
@@ -340,6 +348,36 @@ function clearAdversaireLogo() {
   const input = document.getElementById("adversaireLogoFile");
   if (input) input.value = "";
   adversaireLogoReady = false;
+  render();
+}
+
+function onResultPhotoChange(event) {
+  const file = event && event.target && event.target.files ? event.target.files[0] : null;
+  if (!file) {
+    resultPhotoReady = false;
+    render();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    resultPhotoImage.onload = () => {
+      resultPhotoReady = true;
+      render();
+    };
+    resultPhotoImage.onerror = () => {
+      resultPhotoReady = false;
+      render();
+    };
+    resultPhotoImage.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearResultPhoto() {
+  const input = document.getElementById("resultPhotoFile");
+  if (input) input.value = "";
+  resultPhotoReady = false;
   render();
 }
 
@@ -475,6 +513,29 @@ function drawImageCoverSquare(ctx, image, x, y, size) {
   const sx = (nw - src) / 2;
   const sy = (nh - src) / 2;
   ctx.drawImage(image, sx, sy, src, src, x, y, size, size);
+}
+
+function drawImageCoverRect(ctx, image, x, y, w, h) {
+  const nw = image.naturalWidth || image.width;
+  const nh = image.naturalHeight || image.height;
+  if (!nw || !nh || !w || !h) return;
+
+  const srcRatio = nw / nh;
+  const dstRatio = w / h;
+  let sx = 0;
+  let sy = 0;
+  let sw = nw;
+  let sh = nh;
+
+  if (srcRatio > dstRatio) {
+    sw = nh * dstRatio;
+    sx = (nw - sw) / 2;
+  } else {
+    sh = nw / dstRatio;
+    sy = (nh - sh) / 2;
+  }
+
+  ctx.drawImage(image, sx, sy, sw, sh, x, y, w, h);
 }
 
 function drawVolleyball(ctx, cx, cy, r, fillCol, strokeCol) {
@@ -628,15 +689,15 @@ function drawAdversaireLogo(ctx, cx, cy, size, name) {
 function getFormData() {
   return {
     visualMode: document.getElementById("visual_mode").value === "result" ? "result" : "gameday",
-    division: cleanText(document.getElementById("division").value, "REGIONALE 2"),
+    division: cleanText(document.getElementById("division").value, "LOISIRS"),
     adversaire: cleanText(document.getElementById("adversaire").value, ""),
-    gvcTeam: cleanText(document.getElementById("gvc_team").value, "GVC1"),
+    gvcTeam: cleanText(document.getElementById("gvc_team").value, "GVC"),
     scoreGvc: cleanText(document.getElementById("score_gvc").value, ""),
     scoreAdv: cleanText(document.getElementById("score_adv").value, ""),
     resultStatus: document.getElementById("result_status").value || "auto",
     date: cleanText(document.getElementById("date").value, "12/04"),
     heure: cleanText(document.getElementById("heure").value, "20H"),
-    lieu: cleanText(document.getElementById("lieu").value, "GYMNASE GRADIGNAN"),
+    lieu: cleanText(document.getElementById("lieu").value, "GYMNASE"),
     domext: document.getElementById("domext").value === "away" ? "away" : "home"
   };
 }
@@ -834,6 +895,29 @@ function drawStory(ctx, W, H, data) {
     ctx.font = `900 ${W * 0.038}px ${FONT_UI}`;
     ctx.fillStyle = resultMeta.fg;
     ctx.fillText(resultMeta.label, W / 2, rsY + rsH * 0.56);
+  }
+
+  if (isResult && resultPhotoReady && resultPhotoImage.naturalWidth > 0 && resultPhotoImage.naturalHeight > 0) {
+    const photoW = W * 0.72;
+    const photoH = H * 0.215;
+    const photoX = (W - photoW) / 2;
+    const photoY = bottomY + H * 0.06;
+    const photoR = H * 0.018;
+
+    rr(ctx, photoX, photoY, photoW, photoH, photoR);
+    ctx.fillStyle = "rgba(22, 35, 22, 0.26)";
+    ctx.fill();
+
+    ctx.save();
+    rr(ctx, photoX, photoY, photoW, photoH, photoR);
+    ctx.clip();
+    drawImageCoverRect(ctx, resultPhotoImage, photoX, photoY, photoW, photoH);
+    ctx.restore();
+
+    rr(ctx, photoX, photoY, photoW, photoH, photoR);
+    ctx.strokeStyle = "rgba(245, 249, 241, 0.65)";
+    ctx.lineWidth = Math.max(1, W * 0.0032);
+    ctx.stroke();
   }
 
   if (!isResult) {
