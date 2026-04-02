@@ -1,0 +1,923 @@
+﻿<style>
+:root {
+  --editor-text: #edf3ed;
+  --editor-muted: #b5c3b5;
+  --editor-panel: linear-gradient(160deg, #3b5648 0%, #2b4337 100%);
+  --editor-border: rgba(240, 244, 237, 0.28);
+  --editor-soft: rgba(255, 255, 255, 0.06);
+  --editor-focus: #b8bc88;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(280px, 1fr);
+  gap: 22px;
+  align-items: start;
+  padding: 14px 0;
+  font-family: "Trebuchet MS", "Gill Sans", "Segoe UI", Tahoma, sans-serif;
+  color: var(--editor-text);
+  animation: editorEnter 360ms ease-out both;
+}
+
+@keyframes editorEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.controls {
+  background: var(--editor-panel);
+  border: 1px solid var(--editor-border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.25);
+}
+
+.section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #f8f7ed;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  padding-bottom: 7px;
+  margin-bottom: 2px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 12px;
+  color: var(--editor-muted);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--editor-border);
+  border-radius: 10px;
+  background: rgba(18, 33, 26, 0.72);
+  color: var(--editor-text);
+  font-size: 13px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: var(--editor-focus);
+  box-shadow: 0 0 0 3px rgba(184, 188, 136, 0.26);
+  outline: none;
+}
+
+.double-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dl-btn {
+  margin-top: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 11px;
+  background: linear-gradient(130deg, #bac089 0%, #d9d9ac 100%);
+  color: #243327;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 130ms ease, filter 130ms ease;
+}
+
+.dl-btn:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.preview-wrap {
+  background: radial-gradient(circle at 10% 0%, #6a8674 0%, #496353 58%, #354a3e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 100%;
+  box-shadow: 0 22px 42px rgba(0, 0, 0, 0.25);
+}
+
+.preview-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #e4eadc;
+}
+
+.canvas-shell {
+  border-radius: 14px;
+  background:
+    linear-gradient(130deg, rgba(248, 250, 245, 0.09) 0%, rgba(255, 255, 255, 0) 70%),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.03) 0 12px, rgba(255, 255, 255, 0) 12px 24px),
+    #2e4539;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 12px;
+}
+
+#cv {
+  display: block;
+  width: min(52vw, 285px);
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.field input[type="file"] {
+  padding: 7px 8px;
+  font-size: 12px;
+}
+
+.mini-btn {
+  margin-top: 4px;
+  width: fit-content;
+  padding: 5px 10px;
+  border: 1px solid rgba(240, 244, 237, 0.34);
+  border-radius: 8px;
+  background: rgba(15, 25, 20, 0.45);
+  color: var(--editor-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mini-btn:hover {
+  background: rgba(15, 25, 20, 0.62);
+}
+
+.mode-result.hidden,
+.mode-gameday.hidden {
+  display: none !important;
+}
+
+@media (max-width: 860px) {
+  .editor {
+    grid-template-columns: 1fr;
+  }
+  .preview-wrap {
+    padding: 12px;
+  }
+  #cv {
+    width: min(84vw, 320px);
+  }
+}
+</style>
+
+<div class="editor">
+  <div class="controls">
+    <div class="section-title">Infos du match</div>
+
+    <div class="field">
+      <label for="visual_mode">Type de visuel</label>
+      <select id="visual_mode" onchange="updateModeUI(); render()">
+        <option value="gameday">Game Day</option>
+        <option value="result">Resultat</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="division">Division / Competition</label>
+      <input id="division" value="Regionale 2" oninput="render()" />
+    </div>
+
+    <div class="field">
+      <label for="adversaire">Equipe adverse</label>
+      <input id="adversaire" value="" placeholder="Nom equipe adverse" oninput="render()" />
+    </div>
+
+    <div class="field">
+      <label for="gvc_team">Equipe GVC (ex: GVC1, GVC2, GVC3)</label>
+      <input id="gvc_team" value="GVC1" oninput="render()" />
+    </div>
+
+    <div class="field">
+      <label for="adversaireLogoFile">Logo equipe adverse (optionnel)</label>
+      <input id="adversaireLogoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="onAdversaireLogoChange(event)" />
+      <button class="mini-btn" type="button" onclick="clearAdversaireLogo()">Retirer le logo adverse</button>
+    </div>
+
+    <div class="double-row mode-result hidden">
+      <div class="field">
+        <label for="score_gvc">Score GVC</label>
+        <input id="score_gvc" value="3" oninput="render()" />
+      </div>
+      <div class="field">
+        <label for="score_adv">Score adverse</label>
+        <input id="score_adv" value="1" oninput="render()" />
+      </div>
+    </div>
+
+    <div class="field mode-result hidden">
+      <label for="result_status">Issue du match</label>
+      <select id="result_status" onchange="render()">
+        <option value="auto">Auto (selon score)</option>
+        <option value="win">Victoire</option>
+        <option value="loss">Defaite</option>
+        <option value="draw">Nul</option>
+      </select>
+    </div>
+
+    <div class="double-row mode-gameday">
+      <div class="field">
+        <label for="date">Date (ex: 28/09)</label>
+        <input id="date" value="12/04" oninput="render()" />
+      </div>
+      <div class="field">
+        <label for="heure">Heure</label>
+        <input id="heure" value="20H" oninput="render()" />
+      </div>
+    </div>
+
+    <div class="field mode-gameday">
+      <label for="lieu">Lieu</label>
+      <input id="lieu" value="Gymnase Gradignan" oninput="render()" />
+    </div>
+
+    <div class="field">
+      <label for="domext">Domicile / Exterieur</label>
+      <select id="domext" onchange="render()">
+        <option value="home">Domicile</option>
+        <option value="away">Exterieur</option>
+      </select>
+    </div>
+
+    <button class="dl-btn" type="button" onclick="dlStory()">Telecharger PNG</button>
+  </div>
+
+  <div class="preview-wrap">
+    <div class="preview-label">Apercu Story (9:16)</div>
+    <div class="canvas-shell">
+      <canvas id="cv" width="270" height="480"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+const FONT_TITLE = "'Impact', 'Haettenschweiler', 'Arial Narrow Bold', sans-serif";
+const FONT_UI = "'Trebuchet MS', 'Gill Sans', 'Segoe UI', sans-serif";
+
+const C = {
+  darkGreen: "#4a6456",
+  deepGreen: "#344b3f",
+  pine: "#7e927f",
+  lime: "#8a9b88",
+  gold: "#c0be8b",
+  goldBright: "#d8d5a7",
+  white: "#ffffff",
+  black: "#172118",
+  navy: "#31463c"
+};
+
+const GVC_LOGO_DATA_URI = "data:image/jpeg;base64,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";
+
+const gvcLogoImage = new Image();
+let gvcLogoReady = false;
+const adversaireLogoImage = new Image();
+let adversaireLogoReady = false;
+
+function initGVCLogo() {
+  gvcLogoImage.onload = () => {
+    gvcLogoReady = true;
+    render();
+  };
+  gvcLogoImage.onerror = () => {
+    gvcLogoReady = false;
+    render();
+  };
+  gvcLogoImage.src = GVC_LOGO_DATA_URI;
+}
+
+function onAdversaireLogoChange(event) {
+  const file = event && event.target && event.target.files ? event.target.files[0] : null;
+  if (!file) {
+    adversaireLogoReady = false;
+    render();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    adversaireLogoImage.onload = () => {
+      adversaireLogoReady = true;
+      render();
+    };
+    adversaireLogoImage.onerror = () => {
+      adversaireLogoReady = false;
+      render();
+    };
+    adversaireLogoImage.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAdversaireLogo() {
+  const input = document.getElementById("adversaireLogoFile");
+  if (input) input.value = "";
+  adversaireLogoReady = false;
+  render();
+}
+
+function updateModeUI() {
+  const mode = document.getElementById("visual_mode").value === "result" ? "result" : "gameday";
+  document.querySelectorAll(".mode-result").forEach((el) => {
+    el.classList.toggle("hidden", mode !== "result");
+  });
+  document.querySelectorAll(".mode-gameday").forEach((el) => {
+    el.classList.toggle("hidden", mode !== "gameday");
+  });
+}
+
+function rr(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function setFittedFont(ctx, text, maxWidth, startPx, minPx, weight, family) {
+  let size = startPx;
+  while (size > minPx) {
+    ctx.font = `${weight} ${size}px ${family}`;
+    if (ctx.measureText(text).width <= maxWidth) break;
+    size -= 1;
+  }
+  return size;
+}
+
+function cleanText(value, fallback) {
+  const str = String(value || "").trim().replace(/\s+/g, " ");
+  return str || fallback;
+}
+
+function shortName(value) {
+  const name = cleanText(value, "").toUpperCase();
+  if (!name) return "";
+  const parts = name.split(" ");
+  if (parts.length === 1) return parts[0].slice(0, 12);
+  if (parts[0].length <= 3 && parts.length >= 2) return `${parts[0]} ${parts[1]}`.slice(0, 14);
+  return parts[0].slice(0, 12);
+}
+
+function wrapTextLines(ctx, text, maxWidth) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (!line || ctx.measureText(candidate).width <= maxWidth) {
+      line = candidate;
+    } else {
+      lines.push(line);
+      line = word;
+    }
+  }
+
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawWrappedTeamLabel(ctx, text, cx, topY, maxWidth, maxLines, color) {
+  const label = cleanText(text, "").toUpperCase();
+  if (!label) return topY;
+
+  let fontSize = maxWidth * 0.16;
+  const minFontSize = maxWidth * 0.075;
+  let lines = [];
+
+  while (fontSize >= minFontSize) {
+    ctx.font = `700 ${fontSize}px ${FONT_UI}`;
+    lines = wrapTextLines(ctx, label, maxWidth);
+    const overflow = lines.length > maxLines || lines.some((line) => ctx.measureText(line).width > maxWidth);
+    if (!overflow) break;
+    fontSize -= 0.8;
+  }
+
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, maxLines);
+    let last = lines[maxLines - 1];
+    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[maxLines - 1] = `${last}…`;
+  }
+
+  lines = lines.map((line) => {
+    if (ctx.measureText(line).width <= maxWidth) return line;
+    let trimmed = line;
+    while (trimmed.length > 1 && ctx.measureText(`${trimmed}…`).width > maxWidth) {
+      trimmed = trimmed.slice(0, -1);
+    }
+    return `${trimmed}…`;
+  });
+
+  const lineHeight = fontSize * 1.08;
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${fontSize}px ${FONT_UI}`;
+
+  lines.forEach((line, i) => {
+    ctx.fillText(line, cx, topY + lineHeight * (i + 0.5));
+  });
+
+  return topY + lineHeight * lines.length;
+}
+
+function drawSoftGlow(ctx, x, y, r, color) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color);
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawImageCoverSquare(ctx, image, x, y, size) {
+  const nw = image.naturalWidth || image.width;
+  const nh = image.naturalHeight || image.height;
+  if (!nw || !nh) return;
+  const src = Math.min(nw, nh);
+  const sx = (nw - src) / 2;
+  const sy = (nh - src) / 2;
+  ctx.drawImage(image, sx, sy, src, src, x, y, size, size);
+}
+
+function drawVolleyball(ctx, cx, cy, r, fillCol, strokeCol) {
+  ctx.save();
+  ctx.fillStyle = fillCol;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth = r * 0.09;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - r, cy);
+  ctx.bezierCurveTo(cx - r * 0.3, cy - r * 0.85, cx + r * 0.3, cy - r * 0.85, cx + r, cy);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - r, cy);
+  ctx.bezierCurveTo(cx - r * 0.3, cy + r * 0.85, cx + r * 0.3, cy + r * 0.85, cx + r, cy);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r);
+  ctx.bezierCurveTo(cx + r * 0.65, cy - r * 0.3, cx + r * 0.65, cy + r * 0.3, cx, cy + r);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGVCLogo(ctx, cx, cy, size) {
+  ctx.save();
+  drawSoftGlow(ctx, cx, cy, size * 1.24, "rgba(108, 130, 113, 0.18)");
+  const shell = ctx.createLinearGradient(cx - size, cy - size, cx + size, cy + size);
+  shell.addColorStop(0, C.deepGreen);
+  shell.addColorStop(1, C.darkGreen);
+  ctx.fillStyle = shell;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(228, 233, 204, 0.95)";
+  ctx.lineWidth = size * 0.06;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.98, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.88, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (gvcLogoReady && gvcLogoImage.naturalWidth > 0 && gvcLogoImage.naturalHeight > 0) {
+    const ringRadius = size * 0.88;
+    ctx.filter = "saturate(1.08) contrast(1.03)";
+    drawImageCoverSquare(ctx, gvcLogoImage, cx - ringRadius, cy - ringRadius, ringRadius * 2);
+    ctx.filter = "none";
+  } else {
+    ctx.fillStyle = C.darkGreen;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 ${size * 0.58}px ${FONT_TITLE}`;
+    ctx.fillText("GVC", cx, cy - size * 0.08);
+    ctx.fillStyle = C.pine;
+    ctx.font = `700 ${size * 0.17}px ${FONT_UI}`;
+    ctx.fillText("GRADIGNAN", cx, cy + size * 0.34);
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawAdversaireLogo(ctx, cx, cy, size, name) {
+  const label = cleanText(name, "").toUpperCase();
+
+  ctx.save();
+  drawSoftGlow(ctx, cx, cy, size * 1.26, "rgba(164, 181, 165, 0.16)");
+
+  const grad = ctx.createLinearGradient(cx - size, cy - size, cx + size, cy + size);
+  grad.addColorStop(0, "#566d60");
+  grad.addColorStop(1, "#32463b");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#d2dccd";
+  ctx.lineWidth = size * 0.07;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.98, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.88, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (adversaireLogoReady && adversaireLogoImage.naturalWidth > 0 && adversaireLogoImage.naturalHeight > 0) {
+    const ringRadius = size * 0.88;
+    drawImageCoverSquare(ctx, adversaireLogoImage, cx - ringRadius, cy - ringRadius, ringRadius * 2);
+  } else {
+    if (label) {
+      const maxWidth = size * 1.42;
+      const maxLines = 3;
+      let fontSize = size * 0.44;
+      const minFontSize = size * 0.16;
+      let lines = [];
+
+      while (fontSize >= minFontSize) {
+        ctx.font = `800 ${fontSize}px ${FONT_UI}`;
+        lines = wrapTextLines(ctx, label, maxWidth);
+        const hasOverflow = lines.length > maxLines;
+        const tooWide = lines.some((line) => ctx.measureText(line).width > maxWidth);
+        if (!hasOverflow && !tooWide) break;
+        fontSize -= 1;
+      }
+
+      if (lines.length > maxLines) {
+        lines = lines.slice(0, maxLines);
+        let last = lines[maxLines - 1];
+        while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+          last = last.slice(0, -1);
+        }
+        lines[maxLines - 1] = `${last}…`;
+      }
+
+      lines = lines.map((line) => {
+        if (ctx.measureText(line).width <= maxWidth) return line;
+        let trimmed = line;
+        while (trimmed.length > 1 && ctx.measureText(`${trimmed}…`).width > maxWidth) {
+          trimmed = trimmed.slice(0, -1);
+        }
+        return `${trimmed}…`;
+      });
+
+      const lineHeight = fontSize * 1.06;
+      const startY = cy - ((lines.length - 1) * lineHeight) / 2;
+
+      ctx.fillStyle = "#eef4ea";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `800 ${fontSize}px ${FONT_UI}`;
+      lines.forEach((line, index) => {
+        ctx.fillText(line, cx, startY + index * lineHeight);
+      });
+    }
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
+function getFormData() {
+  return {
+    visualMode: document.getElementById("visual_mode").value === "result" ? "result" : "gameday",
+    division: cleanText(document.getElementById("division").value, "REGIONALE 2"),
+    adversaire: cleanText(document.getElementById("adversaire").value, ""),
+    gvcTeam: cleanText(document.getElementById("gvc_team").value, "GVC1"),
+    scoreGvc: cleanText(document.getElementById("score_gvc").value, ""),
+    scoreAdv: cleanText(document.getElementById("score_adv").value, ""),
+    resultStatus: document.getElementById("result_status").value || "auto",
+    date: cleanText(document.getElementById("date").value, "12/04"),
+    heure: cleanText(document.getElementById("heure").value, "20H"),
+    lieu: cleanText(document.getElementById("lieu").value, "GYMNASE GRADIGNAN"),
+    domext: document.getElementById("domext").value === "away" ? "away" : "home"
+  };
+}
+
+function parseNumericScore(value) {
+  const text = cleanText(value, "");
+  if (!text) return null;
+  const match = text.match(/-?\d+/);
+  if (!match) return null;
+  const n = Number(match[0]);
+  return Number.isNaN(n) ? null : n;
+}
+
+function getResultMeta(data) {
+  let status = data.resultStatus;
+  const gvcScore = parseNumericScore(data.scoreGvc);
+  const advScore = parseNumericScore(data.scoreAdv);
+
+  if (status === "auto") {
+    if (gvcScore === null || advScore === null) status = "result";
+    else if (gvcScore > advScore) status = "win";
+    else if (gvcScore < advScore) status = "loss";
+    else status = "draw";
+  }
+
+  if (status === "win") return { label: "VICTOIRE", bg: "#9ec08c", fg: "#0f1b0f" };
+  if (status === "loss") return { label: "DEFAITE", bg: "#b48686", fg: "#1d1010" };
+  if (status === "draw") return { label: "NUL", bg: "#adb8a9", fg: "#1b231a" };
+  return { label: "RESULTAT", bg: "rgba(240,244,236,0.32)", fg: "#f2f6ef" };
+}
+
+function drawStory(ctx, W, H, data) {
+  const isResult = data.visualMode === "result";
+  const radius = Math.max(11, W * 0.04);
+  ctx.clearRect(0, 0, W, H);
+
+  rr(ctx, 0, 0, W, H, radius);
+  ctx.save();
+  ctx.clip();
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H * 0.75);
+  bg.addColorStop(0, C.deepGreen);
+  bg.addColorStop(1, C.darkGreen);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawSoftGlow(ctx, W * 0.13, H * 0.03, W * 0.64, "rgba(95, 120, 102, 0.14)");
+  drawSoftGlow(ctx, W * 0.84, H * 0.22, W * 0.46, "rgba(77, 99, 84, 0.1)");
+
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.lineWidth = Math.max(0.7, W * 0.0026);
+  for (let i = -H * 0.3; i < W + H * 0.4; i += W * 0.09) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i - H * 0.38, H * 0.7);
+    ctx.stroke();
+  }
+
+  const bottomY = H * 0.655;
+  ctx.fillStyle = C.gold;
+  ctx.beginPath();
+  ctx.moveTo(0, bottomY + H * 0.03);
+  ctx.quadraticCurveTo(W * 0.5, bottomY - H * 0.02, W, bottomY + H * 0.02);
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+
+  const titleY = H * 0.12;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 ${W * 0.16}px ${FONT_TITLE}`;
+  ctx.strokeStyle = "rgba(0,0,0,0.32)";
+  ctx.lineWidth = Math.max(1.2, W * 0.01);
+  const titleText = isResult ? "RESULTAT" : "GAME DAY";
+  ctx.strokeText(titleText, W / 2, titleY);
+  const titleGrad = ctx.createLinearGradient(0, titleY - H * 0.05, 0, titleY + H * 0.04);
+  titleGrad.addColorStop(0, "#fcfdfb");
+  titleGrad.addColorStop(1, "#e6eee4");
+  ctx.fillStyle = titleGrad;
+  ctx.fillText(titleText, W / 2, titleY);
+
+  const bH = H * 0.067;
+  const bY = H * 0.16;
+  const division = data.division.toUpperCase();
+  ctx.font = `700 ${bH * 0.52}px ${FONT_UI}`;
+  const txtW = Math.min(W * 0.8, ctx.measureText(division).width + W * 0.14);
+  rr(ctx, (W - txtW) / 2, bY, txtW, bH, bH * 0.45);
+  const pill = ctx.createLinearGradient(0, bY, 0, bY + bH);
+  pill.addColorStop(0, C.goldBright);
+  pill.addColorStop(1, C.gold);
+  ctx.fillStyle = pill;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.lineWidth = Math.max(1, W * 0.004);
+  ctx.stroke();
+  ctx.fillStyle = C.black;
+  ctx.fillText(division, W / 2, bY + bH * 0.52);
+
+  const logoY = isResult ? H * 0.37 : H * 0.39;
+  const logoR = isResult ? W * 0.145 : W * 0.168;
+  const leftX = isResult ? W * 0.23 : W * 0.27;
+  const rightX = isResult ? W * 0.77 : W * 0.73;
+
+  if (data.domext === "home") {
+    drawGVCLogo(ctx, leftX, logoY, logoR);
+    drawAdversaireLogo(ctx, rightX, logoY, logoR, data.adversaire);
+  } else {
+    drawAdversaireLogo(ctx, leftX, logoY, logoR, data.adversaire);
+    drawGVCLogo(ctx, rightX, logoY, logoR);
+  }
+
+  const gvcTeam = data.gvcTeam.toUpperCase();
+  const adversaireFull = cleanText(data.adversaire, "");
+  const leftLabel = data.domext === "home" ? gvcTeam : adversaireFull;
+  const rightLabel = data.domext === "home" ? adversaireFull : gvcTeam;
+
+  if (!isResult) {
+    ctx.fillStyle = "rgba(244,248,240,0.2)";
+    ctx.beginPath();
+    ctx.arc(W / 2, logoY, W * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(234,240,232,0.46)";
+    ctx.lineWidth = W * 0.0048;
+    ctx.beginPath();
+    ctx.arc(W / 2, logoY, W * 0.09, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = `900 ${W * 0.086}px ${FONT_TITLE}`;
+    ctx.fillStyle = C.white;
+    ctx.fillText("VS", W / 2, logoY + W * 0.005);
+  } else {
+    const scoreLeft = data.domext === "home" ? cleanText(data.scoreGvc, "-") : cleanText(data.scoreAdv, "-");
+    const scoreRight = data.domext === "home" ? cleanText(data.scoreAdv, "-") : cleanText(data.scoreGvc, "-");
+    const scorePanelW = W * 0.34;
+    const scorePanelH = H * 0.105;
+    const scorePanelX = (W - scorePanelW) / 2;
+    const scorePanelY = logoY - scorePanelH * 0.48;
+
+    rr(ctx, scorePanelX, scorePanelY, scorePanelW, scorePanelH, H * 0.018);
+    ctx.fillStyle = "rgba(244,248,240,0.18)";
+    ctx.fill();
+    ctx.strokeStyle = "rgba(234,240,232,0.45)";
+    ctx.lineWidth = Math.max(1, W * 0.004);
+    ctx.stroke();
+
+    ctx.font = `900 ${W * 0.088}px ${FONT_TITLE}`;
+    ctx.fillStyle = C.white;
+    ctx.fillText(`${scoreLeft} - ${scoreRight}`, W / 2, scorePanelY + scorePanelH * 0.56);
+  }
+
+  const labelTopY = logoY + logoR + H * 0.02;
+  const labelMaxWidth = isResult ? W * 0.30 : W * 0.28;
+  const leftBottomY = drawWrappedTeamLabel(
+    ctx,
+    leftLabel,
+    leftX,
+    labelTopY,
+    labelMaxWidth,
+    3,
+    "rgba(239,244,236,0.9)"
+  );
+  const rightBottomY = drawWrappedTeamLabel(
+    ctx,
+    rightLabel,
+    rightX,
+    labelTopY,
+    labelMaxWidth,
+    3,
+    "rgba(239,244,236,0.9)"
+  );
+  const labelsBottomY = Math.max(leftBottomY, rightBottomY);
+
+  if (!isResult) {
+    const placeTag = data.domext === "home" ? "A DOMICILE" : "A L'EXTERIEUR";
+    const placeTagW = W * 0.43;
+    const placeTagH = H * 0.042;
+    const placeTagY = Math.max(H * 0.557, labelsBottomY + H * 0.02);
+    rr(ctx, (W - placeTagW) / 2, placeTagY, placeTagW, placeTagH, placeTagH * 0.5);
+    ctx.fillStyle = "rgba(240,244,236,0.26)";
+    ctx.fill();
+    ctx.font = `700 ${W * 0.032}px ${FONT_UI}`;
+    ctx.fillStyle = "rgba(247,250,245,0.88)";
+    ctx.fillText(placeTag, W / 2, placeTagY + placeTagH * 0.54);
+  }
+
+  if (isResult) {
+    const resultMeta = getResultMeta(data);
+    const rsW = W * 0.37;
+    const rsH = H * 0.05;
+    const rsY = Math.max(H * 0.545, labelsBottomY + H * 0.02);
+    rr(ctx, (W - rsW) / 2, rsY, rsW, rsH, rsH * 0.48);
+    ctx.fillStyle = resultMeta.bg;
+    ctx.fill();
+    ctx.font = `900 ${W * 0.038}px ${FONT_UI}`;
+    ctx.fillStyle = resultMeta.fg;
+    ctx.fillText(resultMeta.label, W / 2, rsY + rsH * 0.56);
+  }
+
+  if (!isResult) {
+    const dateTime = `${data.date} | ${data.heure}`;
+    ctx.font = `900 ${W * 0.109}px ${FONT_TITLE}`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = C.black;
+    ctx.fillText(dateTime, W * 0.055, bottomY + H * 0.055);
+
+    const locationY = bottomY + H * 0.14;
+    const location = data.lieu.toUpperCase();
+    ctx.font = `700 ${W * 0.045}px ${FONT_UI}`;
+    const locationW = Math.min(W * 0.88, ctx.measureText(location).width + W * 0.08);
+    rr(ctx, W * 0.055, locationY, locationW, H * 0.065, H * 0.02);
+    ctx.fillStyle = "rgba(36, 53, 43, 0.84)";
+    ctx.fill();
+    ctx.fillStyle = C.white;
+    ctx.textBaseline = "middle";
+    ctx.fillText(location, W * 0.055 + W * 0.03, locationY + H * 0.032);
+  }
+
+  ctx.font = `500 ${W * 0.034}px ${FONT_UI}`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillStyle = "rgba(16, 22, 14, 0.5)";
+  ctx.fillText("@gradignanvolleyclub", W - W * 0.04, H - H * 0.025);
+
+  ctx.restore();
+  rr(ctx, 1, 1, W - 2, H - 2, radius);
+  ctx.strokeStyle = "rgba(238, 243, 236, 0.4)";
+  ctx.lineWidth = Math.max(1, W * 0.004);
+  ctx.stroke();
+}
+
+function render() {
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  drawStory(ctx, cv.width, cv.height, getFormData());
+}
+
+function dlStory() {
+  const data = getFormData();
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1080;
+  exportCanvas.height = 1920;
+  const exportCtx = exportCanvas.getContext("2d");
+  drawStory(exportCtx, exportCanvas.width, exportCanvas.height, data);
+  const fileName = data.visualMode === "result" ? "gvc_resultat.png" : "gvc_gameday.png";
+
+  try {
+    exportCanvas.toBlob((blob) => {
+      if (!blob) {
+        try {
+          const link = document.createElement("a");
+          link.download = fileName;
+          link.href = exportCanvas.toDataURL("image/png");
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+        } catch (error) {
+          console.error("Export PNG impossible :", error);
+          alert("Export impossible. Verifie le logo charge (format image local) puis reessaie.");
+        }
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = url;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+    }, "image/png");
+  } catch (error) {
+    console.error("Export PNG impossible :", error);
+    alert("Export impossible. Verifie le logo charge (format image local) puis reessaie.");
+  }
+}
+
+updateModeUI();
+initGVCLogo();
+render();
+</script>
+
